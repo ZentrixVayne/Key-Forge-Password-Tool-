@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Keyforge — Forge Unbreakable Passwords</title>
+<meta name="description" content="Generate cryptographically secure passwords and analyze their strength in real time. No sign-up, fully local, breach-checked." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230a0a0a'/%3E%3Ctext x='50' y='66' font-family='Georgia,serif' font-size='48' fill='%23d4a564' text-anchor='middle'%3E%E2%9A%99%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --bg: #0a0a0a;
+  --bg-soft: #111111;
+  --bg-elev: #161616;
+  --text: #fafafa;
+  --text-muted: #8a8a8a;
+  --text-faint: #555555;
+  --border: #1f1f1f;
+  --border-strong: #2a2a2a;
+  --accent: #d4a564;
+  --accent-dim: #8a6a3a;
+  --danger: #e85d5d;
+  --warn: #e8b85d;
+  --ok: #5dd88a;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+::selection { background: var(--accent); color: var(--bg); }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input { font: inherit; }
+
+/* Grain texture (static, cheap) */
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  opacity: 0.035; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* Aurora blobs in background */
+.aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.aurora-blob { position: absolute; border-radius: 50%; filter: blur(90px); will-change: transform; }
+.aurora-blob.a { width: 600px; height: 600px; top: -200px; left: -150px; background: radial-gradient(circle, rgba(200,130,60,0.35), transparent 65%); animation: drift 22s ease-in-out infinite alternate; }
+.aurora-blob.b { width: 500px; height: 500px; bottom: -150px; right: -100px; background: radial-gradient(circle, rgba(160,90,50,0.28), transparent 65%); animation: drift 28s ease-in-out infinite alternate-reverse; }
+@keyframes drift { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(60px,40px) scale(1.1); } }
+
+/* Layout */
+.wrap { position: relative; z-index: 2; max-width: 1180px; margin: 0 auto; padding: 0 clamp(1.25rem, 5vw, 3rem); }
+
+/* Header */
+header { padding: 1.5rem 0 0; }
+.nav { display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 0.6rem; font-family: var(--font-serif); font-size: 1.5rem; letter-spacing: -0.01em; }
+.logo .gear { color: var(--accent); font-size: 1.3rem; transition: transform 0.6s var(--ease); }
+.logo:hover .gear { transform: rotate(180deg); }
+.nav-meta { font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); display: flex; align-items: center; gap: 0.6rem; }
+.nav-meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Hero */
+.hero { padding: 3rem 0 2rem; text-align: center; }
+.hero h1 { font-family: var(--font-serif); font-size: clamp(2.8rem, 8vw, 5rem); line-height: 1; letter-spacing: -0.02em; font-weight: 400; }
+.hero h1 em { font-style: italic; color: var(--accent); }
+.hero p { margin-top: 1rem; color: var(--text-muted); font-size: 1.05rem; max-width: 52ch; margin-left: auto; margin-right: auto; }
+.hero .badges { margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+.hero .badge { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); padding: 0.4rem 0.9rem; border: 1px solid var(--border-strong); border-radius: 999px; display: inline-flex; align-items: center; gap: 0.4rem; }
+.hero .badge svg { width: 12px; height: 12px; color: var(--ok); }
+
+/* Main grid */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 2.5rem 0; }
+.panel { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: clamp(1.5rem, 4vw, 2.2rem); position: relative; overflow: hidden; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8rem; }
+.panel-head h2 { font-family: var(--font-serif); font-size: 1.7rem; font-weight: 400; letter-spacing: -0.01em; }
+.panel-head .tag { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); }
+
+/* === GENERATOR === */
+.gen-display {
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.2rem;
+  display: flex; align-items: center; gap: 0.8rem;
+  margin-bottom: 1.5rem;
+  min-height: 76px;
+}
+.gen-password {
+  font-family: var(--font-mono);
+  font-size: clamp(1rem, 2.6vw, 1.35rem);
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  flex: 1;
+  color: var(--text);
+  transition: opacity 0.3s var(--ease);
+}
+.gen-password.fade { opacity: 0.3; }
+.gen-copy {
+  flex-shrink: 0;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 0.8rem;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+  white-space: nowrap;
+}
+.gen-copy:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+.gen-copy.copied { background: var(--ok); color: #0a0a0a; border-color: var(--ok); }
+.gen-copy svg { width: 13px; height: 13px; }
+
+.gen-generate {
+  width: 100%;
+  padding: 1rem;
+  background: var(--accent);
+  color: #0a0a0a;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s;
+  margin-bottom: 1.8rem;
+}
+.gen-generate:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -10px rgba(212,165,100,0.5); }
+.gen-generate:active { transform: translateY(0); }
+.gen-generate svg { width: 16px; height: 16px; transition: transform 0.5s var(--ease); }
+.gen-generate:hover svg { transform: rotate(180deg); }
+
+/* Length slider */
+.control { margin-bottom: 1.4rem; }
+.control-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; font-size: 0.85rem; color: var(--text-muted); }
+.control-label .val { font-family: var(--font-mono); color: var(--accent); font-size: 0.95rem; }
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px;
+  background: var(--border-strong);
+  border-radius: 999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid var(--bg-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+  transition: transform 0.2s var(--ease);
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 3px solid var(--bg-soft); box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Toggles */
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1.5rem; }
+.toggle {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: border-color 0.3s, color 0.3s, background 0.3s;
+  user-select: none;
+}
+.toggle:hover { border-color: var(--accent-dim); color: var(--text); }
+.toggle.on { border-color: var(--accent); color: var(--text); background: rgba(212,165,100,0.06); }
+.toggle .check {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  transition: background 0.3s, border-color 0.3s;
+}
+.toggle.on .check { background: var(--accent); border-color: var(--accent); }
+.toggle .check svg { width: 10px; height: 10px; color: #0a0a0a; opacity: 0; transition: opacity 0.2s; }
+.toggle.on .check svg { opacity: 1; }
+
+/* Strength bar on generated password */
+.gen-strength { margin-top: 0.5rem; }
+.strength-bar {
+  height: 4px; background: var(--border-strong); border-radius: 999px; overflow: hidden; margin-top: 0.5rem;
+}
+.strength-fill {
+  height: 100%; width: 0%; border-radius: 999px;
+  transition: width 0.5s var(--ease), background 0.4s;
+}
+.strength-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; justify-content: space-between; }
+.strength-label .lvl { font-weight: 600; }
+
+/* === ANALYZER === */
+.ana-input-wrap { position: relative; margin-bottom: 1.2rem; }
+.ana-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 1rem 3rem 1rem 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  transition: border-color 0.3s;
+}
+.ana-input:focus { outline: none; border-color: var(--accent); }
+.ana-input::placeholder { color: var(--text-faint); }
+.ana-eye {
+  position: absolute; right: 0.8rem; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+.ana-eye:hover { color: var(--text); }
+.ana-eye svg { width: 16px; height: 16px; }
+
+/* Analysis results */
+.ana-empty { color: var(--text-faint); text-align: center; padding: 2rem 0; font-size: 0.9rem; }
+.ana-results { display: none; }
+.ana-results.show { display: block; animation: fadeUp 0.4s var(--ease); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Big entropy + crack time */
+.ana-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.2rem; }
+.ana-stat { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+.ana-stat .label { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
+.ana-stat .value { font-family: var(--font-serif); font-size: 1.6rem; margin-top: 0.3rem; line-height: 1.1; }
+.ana-stat .sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+/* Strength meter */
+.ana-meter { margin-bottom: 1.2rem; }
+.ana-meter .label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; display: flex; justify-content: space-between; }
+
+/* Character analysis */
+.char-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.2rem; }
+.char-cell { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.5rem; text-align: center; }
+.char-cell .ic { font-size: 0.9rem; opacity: 0.5; }
+.char-cell .ct { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); margin-top: 0.2rem; }
+.char-cell .nm { font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+.char-cell.has { border-color: var(--accent-dim); }
+.char-cell.has .ic { opacity: 1; color: var(--accent); }
+
+/* Pattern warnings */
+.warnings { margin-bottom: 1.2rem; }
+.warnings:empty { display: none; }
+.warn-item { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.7rem 0.9rem; background: rgba(232,93,93,0.06); border: 1px solid rgba(232,93,93,0.2); border-radius: var(--radius); margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text); }
+.warn-item svg { width: 14px; height: 14px; color: var(--danger); flex-shrink: 0; margin-top: 2px; }
+
+/* Suggestions */
+.suggestions { margin-bottom: 1.2rem; }
+.suggestions:empty { display: none; }
+.sug-title { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 0.6rem; }
+.sug-item { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.6rem 0.9rem; background: rgba(93,216,138,0.05); border: 1px solid rgba(93,216,138,0.15); border-radius: var(--radius); margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted); }
+.sug-item svg { width: 14px; height: 14px; color: var(--ok); flex-shrink: 0; margin-top: 2px; }
+
+/* Breach check */
+.breach { margin-top: 1.2rem; }
+.breach-btn {
+  width: 100%; padding: 0.9rem;
+  background: var(--bg); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); font-size: 0.88rem; font-weight: 500;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+  transition: border-color 0.3s, background 0.3s;
+}
+.breach-btn:hover { border-color: var(--accent); }
+.breach-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.breach-btn svg { width: 15px; height: 15px; }
+.breach-result { margin-top: 0.8rem; padding: 0.9rem 1rem; border-radius: var(--radius); font-size: 0.88rem; display: none; }
+.breach-result.show { display: block; animation: fadeUp 0.4s var(--ease); }
+.breach-result.safe { background: rgba(93,216,138,0.08); border: 1px solid rgba(93,216,138,0.2); color: var(--ok); }
+.breach-result.breached { background: rgba(232,93,93,0.08); border: 1px solid rgba(232,93,93,0.2); color: var(--danger); }
+.breach-result.error { background: rgba(232,184,93,0.08); border: 1px solid rgba(232,184,93,0.2); color: var(--warn); }
+.breach-result .big { font-family: var(--font-serif); font-size: 1.3rem; display: block; margin-bottom: 0.2rem; }
+
+/* Footer */
+footer { padding: 3rem 0 2rem; text-align: center; color: var(--text-faint); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+footer .trust { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1rem; }
+footer .trust span { display: inline-flex; align-items: center; gap: 0.4rem; }
+footer .trust svg { width: 13px; height: 13px; color: var(--ok); }
+footer a { color: var(--text-muted); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+/* Responsive */
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: clamp(2.2rem, 10vw, 3.5rem); }
+  .char-grid { grid-template-columns: repeat(2, 1fr); }
+  .ana-hero { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  .aurora-blob { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true">
+  <div class="aurora-blob a"></div>
+  <div class="aurora-blob b"></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="nav">
+      <div class="logo">
+        <span class="gear">⚙</span>
+        <span>Keyforge</span>
+      </div>
+      <div class="nav-meta"><span class="dot"></span><span>100% Local · Nothing leaves your browser</span></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>Forge <em>unbreakable</em> passwords.</h1>
+    <p>Generate cryptographically secure passwords and analyze their true strength in real time. Everything runs locally in your browser — no servers, no tracking, no sign-up.</p>
+    <div class="badges">
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Crypto-secure RNG</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Breach-checked</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Zero network send</span>
+    </div>
+  </section>
+
+  <main class="grid">
+    <!-- ===== GENERATOR ===== -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Generator</h2>
+        <span class="tag">Crypto-secure</span>
+      </div>
+
+      <div class="gen-display">
+        <div class="gen-password" id="genPassword">click generate</div>
+        <button class="gen-copy" id="genCopy" aria-label="Copy password">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <button class="gen-generate" id="genBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1.06 6.67 2.76L21 8"/><path d="M21 3v5h-5"/></svg>
+        Generate New Password
+      </button>
+
+      <div class="control">
+        <div class="control-label">
+          <span>Length</span>
+          <span class="val" id="lenVal">20</span>
+        </div>
+        <input type="range" id="lenSlider" min="8" max="64" value="20" />
+      </div>
+
+      <div class="toggles" id="toggles">
+        <div class="toggle on" data-opt="upper">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          A–Z Uppercase
+        </div>
+        <div class="toggle on" data-opt="lower">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          a–z Lowercase
+        </div>
+        <div class="toggle on" data-opt="numbers">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          0–9 Numbers
+        </div>
+        <div class="toggle on" data-opt="symbols">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          !@# Symbols
+        </div>
+        <div class="toggle" data-opt="noAmbiguous">
+          <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Exclude 0O1lI
+        </div>
+      </div>
+
+      <div class="gen-strength">
+        <div class="strength-label">
+          <span>Generated strength</span>
+          <span class="lvl" id="genLvl">—</span>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="genFill"></div></div>
+      </div>
+    </section>
+
+    <!-- ===== ANALYZER ===== -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Analyzer</h2>
+        <span class="tag">Real-time</span>
+      </div>
+
+      <div class="ana-input-wrap">
+        <input type="text" class="ana-input" id="anaInput" placeholder="Type or paste a password to analyze…" autocomplete="off" spellcheck="false" />
+        <button class="ana-eye" id="anaEye" aria-label="Toggle visibility">
+          <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+
+      <div class="ana-empty" id="anaEmpty">Start typing to see entropy, crack time, character analysis, and breach status.</div>
+
+      <div class="ana-results" id="anaResults">
+        <div class="ana-hero">
+          <div class="ana-stat">
+            <div class="label">Entropy</div>
+            <div class="value" id="entropy">0 bits</div>
+            <div class="sub" id="entropySub">very weak</div>
+          </div>
+          <div class="ana-stat">
+            <div class="label">Crack time</div>
+            <div class="value" id="crackTime">instant</div>
+            <div class="sub">at 10B guesses/sec</div>
+          </div>
+        </div>
+
+        <div class="ana-meter">
+          <div class="label"><span>Strength</span><span id="anaLvl">weak</span></div>
+          <div class="strength-bar"><div class="strength-fill" id="anaFill"></div></div>
+        </div>
+
+        <div class="char-grid" id="charGrid">
+          <div class="char-cell" data-type="lower"><div class="ic">a-z</div><div class="ct" id="ctLower">0</div><div class="nm">lower</div></div>
+          <div class="char-cell" data-type="upper"><div class="ic">A-Z</div><div class="ct" id="ctUpper">0</div><div class="nm">upper</div></div>
+          <div class="char-cell" data-type="number"><div class="ic">0-9</div><div class="ct" id="ctNumber">0</div><div class="nm">digits</div></div>
+          <div class="char-cell" data-type="symbol"><div class="ic">!@#</div><div class="ct" id="ctSymbol">0</div><div class="nm">symbols</div></div>
+        </div>
+
+        <div class="warnings" id="warnings"></div>
+        <div class="suggestions" id="suggestions"></div>
+
+        <div class="breach">
+          <button class="breach-btn" id="breachBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Check if password has been leaked
+          </button>
+          <div class="breach-result" id="breachResult"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="trust">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Runs entirely in your browser</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> No data sent to any server</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Open source ready</span>
+    </div>
+    <div>Keyforge · Built by Arshman Anil · Uses Web Crypto API & Have I Been Pwned (k-anonymity)</div>
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   KEYFORGE — Password generator + analyzer
+   All logic is local. No network calls except the optional
+   HIBP breach check, which uses k-anonymity (only sends the
+   first 5 characters of the password's SHA-1 hash).
+   ============================================================ */
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
+/* ---------- Character sets ---------- */
+const SETS = {
+  lower: 'abcdefghijklmnopqrstuvwxyz',
+  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?/~',
+};
+const AMBIGUOUS = /[0O1lI]/g;
+
+/* ---------- State ---------- */
+const opts = { upper: true, lower: true, numbers: true, symbols: true, noAmbiguous: false };
+
+/* ============================================================
+   GENERATOR
+   ============================================================ */
+
+function secureRandomInt(max) {
+  // Rejection sampling for uniform distribution
+  const buf = new Uint32Array(1);
+  const range = 4294967296; // 2^32
+  const limit = range - (range % max);
+  let r;
+  do {
+    crypto.getRandomValues(buf);
+    r = buf[0];
+  } while (r >= limit);
+  return r % max;
+}
+
+function generatePassword(length) {
+  let pool = '';
+  if (opts.lower) pool += SETS.lower;
+  if (opts.upper) pool += SETS.upper;
+  if (opts.numbers) pool += SETS.numbers;
+  if (opts.symbols) pool += SETS.symbols;
+  if (opts.noAmbiguous) pool = pool.replace(AMBIGUOUS, '');
+  if (!pool) pool = SETS.lower + SETS.upper + SETS.numbers;
+
+  // Guarantee at least one of each selected set (best effort for short passwords)
+  const chars = [];
+  const setsInUse = Object.keys(SETS).filter(k => opts[k] && (!opts.noAmbiguous || true));
+  // Build the guaranteed chars
+  const guaranteed = [];
+  if (opts.lower) guaranteed.push(SETS.lower[secureRandomInt(SETS.lower.length)]);
+  if (opts.upper) guaranteed.push(SETS.upper[secureRandomInt(SETS.upper.length)]);
+  if (opts.numbers) guaranteed.push(SETS.numbers[secureRandomInt(SETS.numbers.length)]);
+  if (opts.symbols) guaranteed.push(SETS.symbols[secureRandomInt(SETS.symbols.length)]);
+
+  // Filter guaranteed chars for ambiguous if needed
+  let guaranteedFiltered = opts.noAmbiguous ? guaranteed.filter(c => !AMBIGUOUS.test(c)) : guaranteed;
+  // Fill the rest randomly
+  const targetLen = Math.max(length, guaranteedFiltered.length);
+  const result = [];
+  // Place guaranteed chars
+  for (let i = 0; i < guaranteedFiltered.length && i < targetLen; i++) {
+    result.push(guaranteedFiltered[i]);
+  }
+  // Fill remaining with random
+  for (let i = result.length; i < targetLen; i++) {
+    result.push(pool[secureRandomInt(pool.length)]);
+  }
+  // Shuffle (Fisher-Yates with crypto RNG)
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result.slice(0, length).join('');
+}
+
+function updateGenerated() {
+  const len = parseInt($('#lenSlider').value, 10);
+  $('#lenVal').textContent = len;
+  const pw = generatePassword(len);
+  const el = $('#genPassword');
+  el.classList.add('fade');
+  setTimeout(() => {
+    el.textContent = pw;
+    el.classList.remove('fade');
+    updateGenStrength(pw);
+  }, 150);
+}
+
+function updateGenStrength(pw) {
+  const analysis = analyze(pw);
+  const fill = $('#genFill');
+  const lvl = $('#genLvl');
+  fill.style.width = analysis.score + '%';
+  fill.style.background = analysis.color;
+  lvl.textContent = analysis.label;
+  lvl.style.color = analysis.color;
+}
+
+/* ============================================================
+   ANALYZER
+   ============================================================ */
+
+function analyze(pw) {
+  if (!pw) return { score: 0, label: '—', color: '#555', entropy: 0, crackTime: 'instant' };
+
+  let poolSize = 0;
+  let hasLower = false, hasUpper = false, hasNumber = false, hasSymbol = false;
+  let ctLower = 0, ctUpper = 0, ctNumber = 0, ctSymbol = 0;
+
+  for (const ch of pw) {
+    if (SETS.lower.includes(ch)) { hasLower = true; ctLower++; }
+    else if (SETS.upper.includes(ch)) { hasUpper = true; ctUpper++; }
+    else if (SETS.numbers.includes(ch)) { hasNumber = true; ctNumber++; }
+    else { hasSymbol = true; ctSymbol++; }
+  }
+  if (hasLower) poolSize += 26;
+  if (hasUpper) poolSize += 26;
+  if (hasNumber) poolSize += 10;
+  if (hasSymbol) poolSize += 26; // approximate
+
+  const entropy = pw.length * Math.log2(poolSize || 1);
+  const crackTime = formatCrackTime(Math.pow(2, entropy) / 1e10);
+
+  // Score 0–100 based on entropy
+  let score;
+  if (entropy < 28) score = Math.round(entropy / 28 * 25);
+  else if (entropy < 36) score = 25 + Math.round((entropy - 28) / 8 * 25);
+  else if (entropy < 60) score = 50 + Math.round((entropy - 36) / 24 * 25);
+  else if (entropy < 128) score = 75 + Math.round((entropy - 60) / 68 * 20);
+  else score = 95 + Math.min(5, Math.round((entropy - 128) / 50));
+
+  let label, color;
+  if (entropy < 28) { label = 'very weak'; color = '#e85d5d'; }
+  else if (entropy < 36) { label = 'weak'; color = '#e8855d'; }
+  else if (entropy < 60) { label = 'fair'; color = '#e8b85d'; }
+  else if (entropy < 128) { label = 'strong'; color = '#a5d85d'; }
+  else { label = 'excellent'; color = '#5dd88a'; }
+
+  // Pattern detection
+  const warnings = [];
+  const lower = pw.toLowerCase();
+
+  // Sequential (3+ consecutive chars)
+  if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/.test(lower)
+      || /(?:012|123|234|345|456|567|678|789|987|876|765|654|543|432|321|210)/.test(pw)) {
+    warnings.push({ msg: 'Contains sequential characters (like "abc" or "123"), which are easy to guess.' });
+  }
+  // Repeated (3+ same in a row)
+  if (/(.)\1\1/.test(pw)) {
+    warnings.push({ msg: 'Contains repeated characters (like "aaa" or "111"), which reduces entropy.' });
+  }
+  // Common words
+  const common = ['password','pass','admin','qwerty','letmein','welcome','monkey','dragon','master','login','user','hello','secret','love'];
+  for (const w of common) {
+    if (lower.includes(w)) {
+      warnings.push({ msg: `Contains the common word "${w}" — dictionary attacks try these first.` });
+      break;
+    }
+  }
+  // Too short
+  if (pw.length < 8) {
+    warnings.push({ msg: 'Password is shorter than 8 characters — too short for any real security.' });
+  }
+  // Only one character type
+  const types = [hasLower, hasUpper, hasNumber, hasSymbol].filter(Boolean).length;
+  if (types === 1 && pw.length < 20) {
+    warnings.push({ msg: 'Uses only one character type — adding variety dramatically increases strength.' });
+  }
+
+  // Suggestions
+  const suggestions = [];
+  if (pw.length < 16) suggestions.push('Make it at least 16 characters for strong security.');
+  if (!hasUpper) suggestions.push('Add uppercase letters (A–Z).');
+  if (!hasLower) suggestions.push('Add lowercase letters (a–z).');
+  if (!hasNumber) suggestions.push('Add numbers (0–9).');
+  if (!hasSymbol) suggestions.push('Add symbols (!@#$) to boost entropy significantly.');
+  if (warnings.length === 0 && suggestions.length === 0) suggestions.push('Great password — consider storing it in a password manager.');
+
+  return {
+    score, label, color, entropy: Math.round(entropy),
+    crackTime, ctLower, ctUpper, ctNumber, ctSymbol,
+    hasLower, hasUpper, hasNumber, hasSymbol,
+    warnings, suggestions,
+  };
+}
+
+function formatCrackTime(seconds) {
+  if (seconds < 1) return 'instant';
+  if (seconds < 60) return Math.round(seconds) + ' sec';
+  if (seconds < 3600) return Math.round(seconds / 60) + ' min';
+  if (seconds < 86400) return Math.round(seconds / 3600) + ' hours';
+  if (seconds < 31536000) return Math.round(seconds / 86400) + ' days';
+  const years = seconds / 31536000;
+  if (years < 1e3) return Math.round(years) + ' years';
+  if (years < 1e6) return Math.round(years / 1e3) + 'K years';
+  if (years < 1e9) return Math.round(years / 1e6) + 'M years';
+  if (years < 1e12) return Math.round(years / 1e9) + 'B years';
+  if (years < 1e15) return Math.round(years / 1e12) + 'T years';
+  return 'centuries';
+}
+
+function updateAnalysis(pw) {
+  const empty = $('#anaEmpty');
+  const results = $('#anaResults');
+  if (!pw) {
+    empty.style.display = 'block';
+    results.classList.remove('show');
+    return;
+  }
+  empty.style.display = 'none';
+  results.classList.add('show');
+
+  const a = analyze(pw);
+  $('#entropy').textContent = a.entropy + ' bits';
+  $('#entropySub').textContent = a.label;
+  $('#entropySub').style.color = a.color;
+  $('#crackTime').textContent = a.crackTime;
+
+  $('#anaFill').style.width = a.score + '%';
+  $('#anaFill').style.background = a.color;
+  $('#anaLvl').textContent = a.label;
+  $('#anaLvl').style.color = a.color;
+
+  $('#ctLower').textContent = a.ctLower;
+  $('#ctUpper').textContent = a.ctUpper;
+  $('#ctNumber').textContent = a.ctNumber;
+  $('#ctSymbol').textContent = a.ctSymbol;
+  // Highlight cells that have chars
+  $$('.char-cell').forEach(cell => {
+    const t = cell.dataset.type;
+    const has = (t === 'lower' && a.hasLower) || (t === 'upper' && a.hasUpper) || (t === 'number' && a.hasNumber) || (t === 'symbol' && a.hasSymbol);
+    cell.classList.toggle('has', has);
+  });
+
+  // Warnings
+  $('#warnings').innerHTML = a.warnings.map(w =>
+    `<div class="warn-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>${w.msg}</div>`
+  ).join('');
+
+  // Suggestions
+  $('#suggestions').innerHTML = a.suggestions.length ?
+    `<div class="sug-title">Suggestions</div>` + a.suggestions.map(s =>
+      `<div class="sug-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>${s}</div>`
+    ).join('') : '';
+
+  // Reset breach result when password changes
+  $('#breachResult').classList.remove('show', 'safe', 'breached', 'error');
+}
+
+/* ============================================================
+   BREACH CHECK (Have I Been Pwned, k-anonymity)
+   ============================================================ */
+async function checkBreach(password) {
+  // SHA-1 hash
+  const enc = new TextEncoder().encode(password);
+  const hashBuf = await crypto.subtle.digest('SHA-1', enc);
+  const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const prefix = hash.slice(0, 5);
+  const suffix = hash.slice(5);
+  // Fetch all suffixes with this prefix (k-anonymity — server never sees full hash)
+  const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+  if (!res.ok) throw new Error('API error');
+  const text = await res.text();
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const [suf, count] = line.trim().split(':');
+    if (suf === suffix) return parseInt(count, 10);
+  }
+  return 0;
+}
+
+/* ============================================================
+   EVENT WIRING
+   ============================================================ */
+
+// Generate button
+$('#genBtn').addEventListener('click', updateGenerated);
+
+// Length slider
+$('#lenSlider').addEventListener('input', () => {
+  $('#lenVal').textContent = $('#lenSlider').value;
+});
+
+// Toggles
+$('#toggles').addEventListener('click', e => {
+  const t = e.target.closest('.toggle');
+  if (!t) return;
+  const opt = t.dataset.opt;
+  // Don't allow all to be off except noAmbiguous
+  if (opt !== 'noAmbiguous') {
+    const others = ['upper','lower','numbers','symbols'].filter(k => k !== opt && opts[k]);
+    if (opts[opt] && others.length === 0) return; // can't turn off the last one
+  }
+  opts[opt] = !opts[opt];
+  t.classList.toggle('on', opts[opt]);
+  updateGenerated();
+});
+
+// Copy button
+$('#genCopy').addEventListener('click', async () => {
+  const pw = $('#genPassword').textContent;
+  if (!pw || pw === 'click generate') return;
+  try { await navigator.clipboard.writeText(pw); }
+  catch {
+    const ta = document.createElement('textarea');
+    ta.value = pw; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  const btn = $('#genCopy');
+  btn.classList.add('copied');
+  btn.querySelector('span').textContent = 'Copied!';
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    btn.querySelector('span').textContent = 'Copy';
+  }, 1800);
+});
+
+// Analyzer input
+$('#anaInput').addEventListener('input', e => {
+  updateAnalysis(e.target.value);
+});
+
+// Eye toggle
+$('#anaEye').addEventListener('click', () => {
+  const inp = $('#anaInput');
+  const icon = $('#eyeIcon');
+  if (inp.type === 'text') {
+    inp.type = 'password';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    inp.type = 'text';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+});
+
+// Breach check
+$('#breachBtn').addEventListener('click', async () => {
+  const pw = $('#anaInput').value;
+  if (!pw) return;
+  const btn = $('#breachBtn');
+  const result = $('#breachResult');
+  btn.disabled = true;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Checking…';
+  result.classList.remove('show', 'safe', 'breached', 'error');
+  try {
+    const count = await checkBreach(pw);
+    result.classList.add('show');
+    if (count === 0) {
+      result.classList.add('safe');
+      result.innerHTML = '<span class="big">No breaches found</span>This password has not appeared in any known data breaches. Safe to use.';
+    } else {
+      result.classList.add('breached');
+      result.innerHTML = `<span class="big">Found in ${count.toLocaleString()} breaches</span>This password has appeared in known data breaches. Do not use it.`;
+    }
+  } catch (err) {
+    result.classList.add('show', 'error');
+    result.innerHTML = '<span class="big">Check failed</span>Could not reach the breach database. You may be offline. The rest of the analyzer still works.';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Check if password has been leaked';
+  }
+});
+
+/* ---------- Initial generate ---------- */
+updateGenerated();
+</script>
+</body>
+</html>
